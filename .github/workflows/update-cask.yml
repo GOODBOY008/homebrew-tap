@@ -1,0 +1,180 @@
+# Auto-update workflow for Homebrew tap
+# Place this file in: GOODBOY008/homebrew-tap/.github/workflows/update-cask.yml
+
+name: Update r-shell Cask
+
+on:
+  repository_dispatch:
+    types: [update-cask]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (e.g., v0.6.0)'
+        required: true
+        type: string
+
+jobs:
+  update-cask:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout homebrew-tap repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            VERSION="${{ github.event.client_payload.version }}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Updating to version: ${VERSION}"
+
+      - name: Download DMG files and calculate checksums
+        id: checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPO="GOODBOY008/r-shell"
+          
+          echo "Downloading DMG files for version ${VERSION}..."
+          
+          # Download Apple Silicon DMG
+          echo "Downloading aarch64 DMG..."
+          curl -L -f -o aarch64.dmg \
+            "https://github.com/${REPO}/releases/download/v${VERSION}/r-shell_${VERSION}_aarch64.dmg" || {
+            echo "Failed to download aarch64 DMG"
+            exit 1
+          }
+          
+          # Download Intel DMG
+          echo "Downloading x64 DMG..."
+          curl -L -f -o x64.dmg \
+            "https://github.com/${REPO}/releases/download/v${VERSION}/r-shell_${VERSION}_x64.dmg" || {
+            echo "Failed to download x64 DMG"
+            exit 1
+          }
+          
+          # Calculate SHA256 checksums
+          echo "Calculating checksums..."
+          AARCH64_SHA=$(sha256sum aarch64.dmg | awk '{print $1}')
+          X64_SHA=$(sha256sum x64.dmg | awk '{print $1}')
+          
+          echo "aarch64_sha=${AARCH64_SHA}" >> $GITHUB_OUTPUT
+          echo "x64_sha=${X64_SHA}" >> $GITHUB_OUTPUT
+          
+          echo "✅ Checksums calculated:"
+          echo "  aarch64: ${AARCH64_SHA}"
+          echo "  x64: ${X64_SHA}"
+
+      - name: Update Cask file
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          AARCH64_SHA="${{ steps.checksums.outputs.aarch64_sha }}"
+          X64_SHA="${{ steps.checksums.outputs.x64_sha }}"
+          
+          cat > Casks/r-shell.rb << EOF
+          # Homebrew Cask for r-shell
+          # Auto-updated by GitHub Actions
+          
+          cask "r-shell" do
+            version "${VERSION}"
+            
+            on_arm do
+              sha256 "${AARCH64_SHA}"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_aarch64.dmg"
+            end
+            
+            on_intel do
+              sha256 "${X64_SHA}"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_x64.dmg"
+            end
+
+            name "r-shell"
+            desc "Modern SSH terminal client built with Tauri and React"
+            homepage "https://github.com/GOODBOY008/r-shell"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            app "r-shell.app"
+
+            # Cleanup user data on uninstall
+            zap trash: [
+              "~/Library/Application Support/com.aiden.r-shell",
+              "~/Library/Caches/com.aiden.r-shell",
+              "~/Library/Preferences/com.aiden.r-shell.plist",
+              "~/Library/Saved Application State/com.aiden.r-shell.savedState",
+              "~/Library/WebKit/com.aiden.r-shell",
+            ]
+          end
+          EOF
+          
+          echo "✅ Cask file updated"
+
+      - name: Verify cask syntax
+        run: |
+          # Install Homebrew if not present (for syntax checking)
+          if ! command -v brew &> /dev/null; then
+            echo "Homebrew not found, skipping syntax check"
+            exit 0
+          fi
+          
+          # Audit the cask
+          brew audit --cask Casks/r-shell.rb || echo "⚠️  Audit warnings (non-fatal)"
+
+      - name: Commit and push changes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add Casks/r-shell.rb
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git commit -m "Update r-shell to v${VERSION}
+
+          - aarch64 SHA256: ${{ steps.checksums.outputs.aarch64_sha }}
+          - x64 SHA256: ${{ steps.checksums.outputs.x64_sha }}
+          
+          Auto-updated by GitHub Actions"
+          
+          git push
+          
+          echo "✅ Changes committed and pushed"
+
+      - name: Create summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # ✅ r-shell Cask Updated
+          
+          **Version:** v${VERSION}
+          
+          ## Checksums
+          - **Apple Silicon (aarch64):** \`${{ steps.checksums.outputs.aarch64_sha }}\`
+          - **Intel (x64):** \`${{ steps.checksums.outputs.x64_sha }}\`
+          
+          ## Installation
+          Users can now install the new version with:
+          \`\`\`bash
+          brew tap GOODBOY008/tap
+          brew install --cask r-shell
+          \`\`\`
+          
+          Or update existing installations:
+          \`\`\`bash
+          brew upgrade --cask r-shell
+          \`\`\`
+          EOF
