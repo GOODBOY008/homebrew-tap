@@ -1,16 +1,16 @@
 # Homebrew Cask for r-shell
-# This file should be placed in: GOODBOY008/homebrew-tap/Casks/r-shell.rb
+# Auto-updated by GitHub Actions
 
 cask "r-shell" do
-  version "0.6.0"
+  version "0.6.1"
   
   on_arm do
-    sha256 "REPLACE_WITH_AARCH64_SHA256"
+    sha256 "448ac4c8dc86fd1e0df4855dc64b759b996ba499ab9bffdcf460d2d1ee475bfa"
     url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_aarch64.dmg"
   end
   
   on_intel do
-    sha256 "REPLACE_WITH_X64_SHA256"
+    sha256 "46fefe56bb586889d981c34755d2dff15aa9201ed571c67c83126e4051ff08be"
     url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_x64.dmg"
   end
 
