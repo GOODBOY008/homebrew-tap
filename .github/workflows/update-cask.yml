@@ -30,6 +30,17 @@ jobs:
           else
             VERSION="${{ inputs.version }}"
           fi
+
+          # If no version was provided, fall back to latest release tag.
+          if [ -z "${VERSION}" ]; then
+            VERSION="$(curl -fsSL https://api.github.com/repos/GOODBOY008/r-shell/releases/latest | jq -r '.tag_name' | sed 's/^v//')"
+          fi
+
+          if [ -z "${VERSION}" ] || [ "${VERSION}" = "null" ]; then
+            echo "Failed to determine release version"
+            exit 1
+          fi
+
           # Remove 'v' prefix if present
           VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
@@ -40,21 +51,58 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           REPO="GOODBOY008/r-shell"
+          RELEASE_TAG="v${VERSION}"
           
-          echo "Downloading DMG files for version ${VERSION}..."
+          echo "Resolving DMG assets for release ${RELEASE_TAG}..."
+
+          RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}") || {
+            echo "Failed to fetch release metadata for tag ${RELEASE_TAG}"
+            exit 1
+          }
+
+          AARCH64_URL=$(echo "${RELEASE_JSON}" | jq -r '.assets | map(select(.name | test("^r-shell_.*_aarch64\\.dmg$"))) | .[0].browser_download_url // empty')
+          X64_URL=$(echo "${RELEASE_JSON}" | jq -r '.assets | map(select(.name | test("^r-shell_.*_x64\\.dmg$"))) | .[0].browser_download_url // empty')
+
+          if [ -z "${AARCH64_URL}" ] || [ -z "${X64_URL}" ]; then
+            echo "Could not find expected DMG assets in release ${RELEASE_TAG}"
+            echo "Available assets:"
+            echo "${RELEASE_JSON}" | jq -r '.assets[].name'
+            exit 1
+          fi
+
+          AARCH64_NAME=$(basename "${AARCH64_URL}")
+          X64_NAME=$(basename "${X64_URL}")
+
+          AARCH64_VERSION=$(echo "${AARCH64_NAME}" | sed -E 's/^r-shell_([^_]+)_aarch64\.dmg$/\1/')
+          X64_VERSION=$(echo "${X64_NAME}" | sed -E 's/^r-shell_([^_]+)_x64\.dmg$/\1/')
+
+          if [ -z "${AARCH64_VERSION}" ] || [ -z "${X64_VERSION}" ]; then
+            echo "Failed to parse version from DMG asset names"
+            exit 1
+          fi
+
+          if [ "${AARCH64_VERSION}" != "${X64_VERSION}" ]; then
+            echo "Asset version mismatch between architectures"
+            echo "aarch64: ${AARCH64_VERSION}, x64: ${X64_VERSION}"
+            exit 1
+          fi
+
+          CASK_VERSION="${AARCH64_VERSION}"
+
+          if [ "${CASK_VERSION}" != "${VERSION}" ]; then
+            echo "Requested version ${VERSION} differs from asset version ${CASK_VERSION}; using asset version"
+          fi
           
           # Download Apple Silicon DMG
-          echo "Downloading aarch64 DMG..."
-          curl -L -f -o aarch64.dmg \
-            "https://github.com/${REPO}/releases/download/v${VERSION}/r-shell_${VERSION}_aarch64.dmg" || {
+          echo "Downloading ${AARCH64_NAME}..."
+          curl -L -f -o aarch64.dmg "${AARCH64_URL}" || {
             echo "Failed to download aarch64 DMG"
             exit 1
           }
           
           # Download Intel DMG
-          echo "Downloading x64 DMG..."
-          curl -L -f -o x64.dmg \
-            "https://github.com/${REPO}/releases/download/v${VERSION}/r-shell_${VERSION}_x64.dmg" || {
+          echo "Downloading ${X64_NAME}..."
+          curl -L -f -o x64.dmg "${X64_URL}" || {
             echo "Failed to download x64 DMG"
             exit 1
           }
@@ -64,16 +112,18 @@ jobs:
           AARCH64_SHA=$(sha256sum aarch64.dmg | awk '{print $1}')
           X64_SHA=$(sha256sum x64.dmg | awk '{print $1}')
           
+          echo "cask_version=${CASK_VERSION}" >> $GITHUB_OUTPUT
           echo "aarch64_sha=${AARCH64_SHA}" >> $GITHUB_OUTPUT
           echo "x64_sha=${X64_SHA}" >> $GITHUB_OUTPUT
           
           echo "✅ Checksums calculated:"
+          echo "  version: ${CASK_VERSION}"
           echo "  aarch64: ${AARCH64_SHA}"
           echo "  x64: ${X64_SHA}"
 
       - name: Update Cask file
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.checksums.outputs.cask_version }}"
           AARCH64_SHA="${{ steps.checksums.outputs.aarch64_sha }}"
           X64_SHA="${{ steps.checksums.outputs.x64_sha }}"
           
@@ -131,7 +181,7 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.checksums.outputs.cask_version }}"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -156,7 +206,7 @@ jobs:
 
       - name: Create summary
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.checksums.outputs.cask_version }}"
           cat >> $GITHUB_STEP_SUMMARY << EOF
           # ✅ r-shell Cask Updated
           
