@@ -87,10 +87,12 @@ jobs:
             exit 1
           fi
 
-          CASK_VERSION="${AARCH64_VERSION}"
+          ASSET_VERSION="${AARCH64_VERSION}"
+          TAG_VERSION="${VERSION}"
+          CASK_VERSION="${ASSET_VERSION},${TAG_VERSION}"
 
-          if [ "${CASK_VERSION}" != "${VERSION}" ]; then
-            echo "Requested version ${VERSION} differs from asset version ${CASK_VERSION}; using asset version"
+          if [ "${ASSET_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "Requested tag version ${TAG_VERSION} differs from asset version ${ASSET_VERSION}; using split cask version"
           fi
           
           # Download Apple Silicon DMG
@@ -112,18 +114,24 @@ jobs:
           AARCH64_SHA=$(sha256sum aarch64.dmg | awk '{print $1}')
           X64_SHA=$(sha256sum x64.dmg | awk '{print $1}')
           
+          echo "asset_version=${ASSET_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_version=${TAG_VERSION}" >> $GITHUB_OUTPUT
           echo "cask_version=${CASK_VERSION}" >> $GITHUB_OUTPUT
           echo "aarch64_sha=${AARCH64_SHA}" >> $GITHUB_OUTPUT
           echo "x64_sha=${X64_SHA}" >> $GITHUB_OUTPUT
           
           echo "✅ Checksums calculated:"
-          echo "  version: ${CASK_VERSION}"
+          echo "  asset version: ${ASSET_VERSION}"
+          echo "  tag version: ${TAG_VERSION}"
+          echo "  cask version: ${CASK_VERSION}"
           echo "  aarch64: ${AARCH64_SHA}"
           echo "  x64: ${X64_SHA}"
 
       - name: Update Cask file
         run: |
           VERSION="${{ steps.checksums.outputs.cask_version }}"
+          ASSET_VERSION="${{ steps.checksums.outputs.asset_version }}"
+          TAG_VERSION="${{ steps.checksums.outputs.tag_version }}"
           AARCH64_SHA="${{ steps.checksums.outputs.aarch64_sha }}"
           X64_SHA="${{ steps.checksums.outputs.x64_sha }}"
           
@@ -136,12 +144,12 @@ jobs:
             
             on_arm do
               sha256 "${AARCH64_SHA}"
-              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_aarch64.dmg"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v${TAG_VERSION}/r-shell_${ASSET_VERSION}_aarch64.dmg"
             end
             
             on_intel do
               sha256 "${X64_SHA}"
-              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_x64.dmg"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v${TAG_VERSION}/r-shell_${ASSET_VERSION}_x64.dmg"
             end
 
             name "r-shell"
@@ -181,7 +189,7 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.checksums.outputs.tag_version }}"
           CASK_VERSION="${{ steps.checksums.outputs.cask_version }}"
           
           git config user.name "github-actions[bot]"
@@ -208,12 +216,14 @@ jobs:
 
       - name: Create summary
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.checksums.outputs.tag_version }}"
           CASK_VERSION="${{ steps.checksums.outputs.cask_version }}"
+          ASSET_VERSION="${{ steps.checksums.outputs.asset_version }}"
           cat >> $GITHUB_STEP_SUMMARY << EOF
           # ✅ r-shell Cask Updated
           
           **Version:** v${VERSION}
+          **Asset Version:** ${ASSET_VERSION}
           **Cask Version:** ${CASK_VERSION}
           
           ## Checksums
