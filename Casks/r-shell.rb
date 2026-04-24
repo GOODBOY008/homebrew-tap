@@ -5,12 +5,12 @@ cask "r-shell" do
   version "1.3.1"
   
   on_arm do
-    sha256 "7b37200c1ff90eadb5c7d80a38fe44d8eb22a749e9750ac83248679e41c885e5"
+    sha256 "4814a667a312cd619ce067e1d943b722b4153b2d455cfb32f356070f31f98d17"
     url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_aarch64.dmg"
   end
   
   on_intel do
-    sha256 "0c3a4d146f93f961a4162825792cc4e531d133b7a18d5427063fe4af4a26573e"
+    sha256 "33240f1ce0c172bb1f709c650d9735ccc89563359325cdd1dcb3c7c57f428767"
     url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_x64.dmg"
   end
 
