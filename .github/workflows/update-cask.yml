@@ -181,7 +181,8 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          VERSION="${{ steps.checksums.outputs.cask_version }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          CASK_VERSION="${{ steps.checksums.outputs.cask_version }}"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -195,6 +196,7 @@ jobs:
           
           git commit -m "Update r-shell to v${VERSION}
 
+          - cask version: ${{ steps.checksums.outputs.cask_version }}
           - aarch64 SHA256: ${{ steps.checksums.outputs.aarch64_sha }}
           - x64 SHA256: ${{ steps.checksums.outputs.x64_sha }}
           
@@ -206,11 +208,13 @@ jobs:
 
       - name: Create summary
         run: |
-          VERSION="${{ steps.checksums.outputs.cask_version }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          CASK_VERSION="${{ steps.checksums.outputs.cask_version }}"
           cat >> $GITHUB_STEP_SUMMARY << EOF
           # ✅ r-shell Cask Updated
           
           **Version:** v${VERSION}
+          **Cask Version:** ${CASK_VERSION}
           
           ## Checksums
           - **Apple Silicon (aarch64):** \`${{ steps.checksums.outputs.aarch64_sha }}\`
