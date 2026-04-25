@@ -25,6 +25,12 @@ cask "r-shell" do
 
   app "r-shell.app"
 
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-cr", "#{appdir}/r-shell.app"],
+                   sudo: false
+  end
+
   # Cleanup user data on uninstall
   zap trash: [
     "~/Library/Application Support/com.aiden.r-shell",
