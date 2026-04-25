@@ -144,12 +144,12 @@ jobs:
             
             on_arm do
               sha256 "${AARCH64_SHA}"
-              url "https://github.com/GOODBOY008/r-shell/releases/download/v${TAG_VERSION}/r-shell_${ASSET_VERSION}_aarch64.dmg"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version.csv.second}/r-shell_#{version.csv.first}_aarch64.dmg"
             end
             
             on_intel do
               sha256 "${X64_SHA}"
-              url "https://github.com/GOODBOY008/r-shell/releases/download/v${TAG_VERSION}/r-shell_${ASSET_VERSION}_x64.dmg"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version.csv.second}/r-shell_#{version.csv.first}_x64.dmg"
             end
 
             name "r-shell"
