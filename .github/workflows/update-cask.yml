@@ -140,16 +140,16 @@ jobs:
           # Auto-updated by GitHub Actions
           
           cask "r-shell" do
-            version "${VERSION}"
+            version "${TAG_VERSION}"
             
             on_arm do
               sha256 "${AARCH64_SHA}"
-              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version.csv.second}/r-shell_#{version.csv.first}_aarch64.dmg"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_aarch64.dmg"
             end
             
             on_intel do
               sha256 "${X64_SHA}"
-              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version.csv.second}/r-shell_#{version.csv.first}_x64.dmg"
+              url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_x64.dmg"
             end
 
             name "r-shell"
