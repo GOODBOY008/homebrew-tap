@@ -25,10 +25,8 @@ cask "r-shell" do
 
   app "r-shell.app"
 
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/r-shell.app"],
-                   sudo: false
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-cr", "{{appdir}}/r-shell.app"]
   end
 
   # Cleanup user data on uninstall
