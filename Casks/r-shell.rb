@@ -2,15 +2,15 @@
 # Auto-updated by GitHub Actions
 
 cask "r-shell" do
-  version "3.1.3"
+  version "3.1.4"
   
   on_arm do
-    sha256 "ab375466fa3804684725f8c510af26b983cdb1208fe12982276c02e8cdf040d2"
+    sha256 "6bedc7c43ce13827a0bd70484bd75383cc92720f551676d35b461973d17c3a58"
     url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_aarch64.dmg"
   end
   
   on_intel do
-    sha256 "2e8ee19c1cfa185c6b639c8d14ab4f71d7a0d10fa36e00e2a4fefb288b43fabb"
+    sha256 "ac2484024a6542d5a41378a8fdafbed159dc7724dc253f84a192dd81bf627581"
     url "https://github.com/GOODBOY008/r-shell/releases/download/v#{version}/r-shell_#{version}_x64.dmg"
   end
 
